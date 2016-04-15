@@ -1,4 +1,4 @@
 [root]
-name = "multirust-version-name"
+name = "rustup-version-name"
 version = "0.1.0"
 
