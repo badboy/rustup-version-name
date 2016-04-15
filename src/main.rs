@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, process};
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::collections::HashMap;
@@ -12,7 +12,13 @@ fn main() {
     let mut overrides_path = home.clone();
     overrides_path.push(OVERRIDES_PATH);
 
-    let overrides = File::open(&overrides_path).unwrap();
+    let overrides = match File::open(&overrides_path) {
+        Ok(f) => f,
+        Err(_) => {
+            println!("default");
+            process::exit(0);
+        }
+    };
     let overrides = BufReader::new(overrides);
 
     let mut overrides_map = HashMap::<PathBuf, String>::new();
