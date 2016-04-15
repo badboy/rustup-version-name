@@ -7,6 +7,18 @@ use std::fs::File;
 
 static OVERRIDES_PATH : &'static str = ".multirust/overrides";
 
+fn clean_toolchain_name(toolchain: &str) -> &str {
+    static SHORTNAMES : &'static [&'static str] = &["stable", "nightly", "beta"];
+
+    for short in SHORTNAMES {
+        if toolchain.starts_with(short) {
+            return short;
+        }
+    }
+
+    toolchain
+}
+
 fn main() {
     let home = env::home_dir().expect("Impossible to get your home dir!");
     let mut overrides_path = home.clone();
@@ -37,7 +49,7 @@ fn main() {
     let cwd = env::current_dir().expect("No valid working directory");
 
     match overrides_map.get(&cwd) {
-        Some(toolchain) => println!("{}", toolchain),
+        Some(toolchain) => println!("{}", clean_toolchain_name(toolchain)),
         None => println!("default"),
     }
 }
