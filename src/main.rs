@@ -7,12 +7,30 @@ use std::fs::File;
 
 static OVERRIDES_PATH : &'static str = ".multirust/overrides";
 
+fn with_date<'a>(short: &'a str, toolchain: &'a str) -> Option<&'a str> {
+    let date_start = short.len() + 1;
+    let date_end   = short.len() + 3 + 4 + 2 + 2;
+    let char_range = toolchain.chars()
+        .skip(date_start)
+        .take(4)
+        .all(char::is_numeric);
+
+    if char_range {
+        Some(&toolchain[0..date_end])
+    } else {
+        None
+    }
+}
+
 fn clean_toolchain_name(toolchain: &str) -> &str {
     static SHORTNAMES : &'static [&'static str] = &["stable", "nightly", "beta"];
 
     for short in SHORTNAMES {
         if toolchain.starts_with(short) {
-            return short;
+            return match with_date(short, toolchain) {
+                Some(s) => s,
+                None => short
+            }
         }
     }
 
