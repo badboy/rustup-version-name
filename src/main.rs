@@ -1,11 +1,14 @@
+extern crate toml;
+
 use std::{env, process};
 use std::io::prelude::*;
-use std::io::BufReader;
+use std::io::{BufReader, ErrorKind};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::fs::File;
 
 static OVERRIDES_PATH : &'static str = ".multirust/overrides";
+static SETTINGS_PATH : &'static str = ".multirust/settings.toml";
 
 fn with_date<'a>(short: &'a str, toolchain: &'a str) -> Option<&'a str> {
     let date_start = short.len() + 1;
@@ -37,19 +40,8 @@ fn clean_toolchain_name(toolchain: &str) -> &str {
     toolchain
 }
 
-fn main() {
-    let home = env::home_dir().expect("Impossible to get your home dir!");
-    let mut overrides_path = home.clone();
-    overrides_path.push(OVERRIDES_PATH);
-
-    let overrides = match File::open(&overrides_path) {
-        Ok(f) => f,
-        Err(_) => {
-            println!("default");
-            process::exit(0);
-        }
-    };
-    let overrides = BufReader::new(overrides);
+fn plain_overrides_file(f: File) {
+    let overrides = BufReader::new(f);
 
     let mut overrides_map = HashMap::<PathBuf, String>::new();
 
@@ -70,4 +62,73 @@ fn main() {
         Some(toolchain) => println!("{}", clean_toolchain_name(toolchain)),
         None => println!("default"),
     }
+}
+
+fn settings_toml(mut settings: File) {
+    let mut content = String::new();
+    settings.read_to_string(&mut content).expect("Can't read settings file");
+
+    let toml = match toml::Parser::new(&content).parse() {
+        Some(table) => table,
+        None => {
+            println!("default");
+            process::exit(0);
+        }
+    };
+
+    let overrides = match toml.get("overrides") {
+        Some(overrides) => overrides,
+        None => {
+            println!("default");
+            process::exit(0);
+        }
+    };
+
+    let overrides = match overrides.as_table() {
+        Some(overrides) => overrides,
+        None => {
+            println!("default");
+            process::exit(0);
+        }
+    };
+
+    let cwd = env::current_dir().expect("No valid working directory");
+    let cwd = format!("{}", cwd.display());
+
+    match overrides.get(&cwd) {
+        Some(toolchain) => {
+            let toolchain = toolchain.as_str().expect("Toolchain should be a string, it wasn't.");
+            println!("{}", clean_toolchain_name(toolchain))
+        },
+        None => println!("default"),
+    }
+}
+
+fn main() {
+    let home = env::home_dir().expect("Impossible to get your home dir!");
+
+    let mut overrides_path = home.clone();
+    overrides_path.push(OVERRIDES_PATH);
+
+    let mut settings_path = home.clone();
+    settings_path.push(SETTINGS_PATH);
+
+    match File::open(&overrides_path) {
+        Ok(f) => {
+            plain_overrides_file(f);
+            process::exit(0);
+        },
+        Err(ref e) if e.kind() == ErrorKind::NotFound => { /* ignored */ },
+        Err(_) => {
+            println!("default");
+            process::exit(0);
+        }
+    }
+
+    if let Ok(f) = File::open(&settings_path) {
+        settings_toml(f);
+        process::exit(0);
+    }
+
+    println!("default");
 }
