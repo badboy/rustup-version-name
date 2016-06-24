@@ -3,12 +3,29 @@ extern crate toml;
 use std::{env, process};
 use std::io::prelude::*;
 use std::io::{BufReader, ErrorKind};
-use std::collections::HashMap;
-use std::path::PathBuf;
+use std::collections::BTreeMap;
 use std::fs::File;
 
 static OVERRIDES_PATH : &'static str = ".multirust/overrides";
 static SETTINGS_PATH : &'static str = ".multirust/settings.toml";
+
+enum OverridesDatabase {
+    Plain(BTreeMap<String, String>),
+    Toml(BTreeMap<String, toml::Value>),
+}
+
+impl OverridesDatabase {
+    pub fn get(&self, key: &str) -> Option<&str> {
+        use OverridesDatabase::*;
+
+        match *self {
+            Plain(ref db) => db.get(key).map(|s| &s[..]),
+            Toml(ref db) => {
+                db.get(key).map(|v| v.as_str().expect("Expected value is not a string."))
+            }
+        }
+    }
+}
 
 fn with_date<'a>(short: &'a str, toolchain: &'a str) -> Option<&'a str> {
     let date_start = short.len() + 1;
@@ -43,7 +60,7 @@ fn clean_toolchain_name(toolchain: &str) -> &str {
 fn plain_overrides_file(f: File) {
     let overrides = BufReader::new(f);
 
-    let mut overrides_map = HashMap::<PathBuf, String>::new();
+    let mut overrides_map = BTreeMap::new();
 
     for line in overrides.lines() {
         let line = line.expect("No valid line found");
@@ -51,17 +68,11 @@ fn plain_overrides_file(f: File) {
         let path = s.next().expect("No path in line");
         let toolchain = s.next().expect("No toolchain in line");
 
-        let path = PathBuf::from(path);
-
-        overrides_map.insert(path, toolchain.into());
+        overrides_map.insert(path.into(), toolchain.into());
     }
 
-    let cwd = env::current_dir().expect("No valid working directory");
-
-    match overrides_map.get(&cwd) {
-        Some(toolchain) => println!("{}", clean_toolchain_name(toolchain)),
-        None => println!("default"),
-    }
+    let database = OverridesDatabase::Plain(overrides_map);
+    toolchain(database);
 }
 
 fn settings_toml(mut settings: File) {
@@ -92,16 +103,26 @@ fn settings_toml(mut settings: File) {
         }
     };
 
-    let cwd = env::current_dir().expect("No valid working directory");
-    let cwd = format!("{}", cwd.display());
+    let database = OverridesDatabase::Toml(overrides.clone());
+    toolchain(database);
+}
 
-    match overrides.get(&cwd) {
-        Some(toolchain) => {
-            let toolchain = toolchain.as_str().expect("Toolchain should be a string, it wasn't.");
-            println!("{}", clean_toolchain_name(toolchain))
-        },
-        None => println!("default"),
+fn toolchain(database: OverridesDatabase) {
+    let mut cwd = env::current_dir().expect("No valid working directory");
+
+    loop {
+        let path = format!("{}", cwd.display());
+
+        if let Some(toolchain) =  database.get(&path) {
+            println!("{}", clean_toolchain_name(toolchain));
+            return;
+        }
+
+        if !cwd.pop() {
+            break;
+        }
     }
+    println!("default");
 }
 
 fn main() {
