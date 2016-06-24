@@ -3,5 +3,24 @@ name = "rustup-version-name"
 version = "0.2.0"
 authors = ["Jan-Erik Rediger <janerik@fnordig.de>"]
 
+keywords = [ "rustup", "shell" ]
+description = "rustup toolchain override in your prompt"
+
+readme = "README.md"
+license = "MIT"
+
+homepage = "https://github.com/badboy/rustup-version-name"
+repository = "https://github.com/badboy/rustup-version-name"
+
+include = [
+  "Cargo.toml",
+  "README*",
+  "LICENSE*",
+  "src/**/*",
+  "tests/**/*",
+  "examples/**/*",
+]
+
+
 [dependencies]
 toml = "0.1.30"
