@@ -75,36 +75,18 @@ fn plain_overrides_file(f: File) {
     toolchain(database);
 }
 
-fn settings_toml(mut settings: File) {
+fn settings_toml(mut settings: File) -> Result<(), ()> {
     let mut content = String::new();
     settings.read_to_string(&mut content).expect("Can't read settings file");
 
-    let toml = match toml::Parser::new(&content).parse() {
-        Some(table) => table,
-        None => {
-            println!("default");
-            process::exit(0);
-        }
-    };
+    let database = try!(toml::Parser::new(&content).parse()
+        .and_then(|toml| toml.get("overrides").cloned())
+        .and_then(|overrides| overrides.as_table().cloned())
+        .and_then(|database| Some(OverridesDatabase::Toml(database)))
+        .ok_or(()));
 
-    let overrides = match toml.get("overrides") {
-        Some(overrides) => overrides,
-        None => {
-            println!("default");
-            process::exit(0);
-        }
-    };
-
-    let overrides = match overrides.as_table() {
-        Some(overrides) => overrides,
-        None => {
-            println!("default");
-            process::exit(0);
-        }
-    };
-
-    let database = OverridesDatabase::Toml(overrides.clone());
     toolchain(database);
+    Ok(())
 }
 
 fn toolchain(database: OverridesDatabase) {
@@ -147,7 +129,7 @@ fn main() {
     }
 
     if let Ok(f) = File::open(&settings_path) {
-        settings_toml(f);
+        settings_toml(f).unwrap_or_else(|_| println!("default"));
         process::exit(0);
     }
 
