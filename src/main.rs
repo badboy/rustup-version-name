@@ -18,7 +18,7 @@ fn with_date<'a>(short: &'a str, toolchain: &'a str) -> Option<&'a str> {
         .take(4)
         .all(char::is_numeric);
 
-    if char_range {
+    if toolchain.len() > date_start && char_range {
         Some(&toolchain[0..date_end])
     } else {
         None
@@ -131,4 +131,20 @@ fn main() {
     }
 
     println!("default");
+}
+
+#[cfg(test)]
+mod test {
+    use super::clean_toolchain_name;
+
+    #[test]
+    fn simple_name() {
+        assert_eq!("nightly", clean_toolchain_name("nightly-x86_64-unknown-linux-gnu"));
+        assert_eq!("nightly", clean_toolchain_name("nightly"));
+    }
+
+    #[test]
+    fn name_with_date() {
+        assert_eq!("nightly-2016-06-05", clean_toolchain_name("nightly-2016-06-05-x86_64-unknown-linux-gnu"));
+    }
 }
