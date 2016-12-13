@@ -7,7 +7,8 @@ use std::collections::BTreeMap;
 use std::fs::File;
 
 static OVERRIDES_PATH : &'static str = ".multirust/overrides";
-static SETTINGS_PATH : &'static str = ".multirust/settings.toml";
+static SETTINGS_PATH : &'static str = ".rustup/settings.toml";
+static OLD_SETTINGS_PATH : &'static str = ".multirust/settings.toml";
 
 enum OverridesDatabase {
     Plain(BTreeMap<String, String>),
@@ -113,9 +114,6 @@ fn main() {
     let mut overrides_path = home.clone();
     overrides_path.push(OVERRIDES_PATH);
 
-    let mut settings_path = home.clone();
-    settings_path.push(SETTINGS_PATH);
-
     match File::open(&overrides_path) {
         Ok(f) => {
             plain_overrides_file(f);
@@ -127,6 +125,18 @@ fn main() {
             process::exit(0);
         }
     }
+
+    let mut settings_path = home.clone();
+    settings_path.push(SETTINGS_PATH);
+
+    if let Ok(f) = File::open(&settings_path) {
+        settings_toml(f).unwrap_or_else(|_| println!("default"));
+        process::exit(0);
+    }
+
+    let mut settings_path = home.clone();
+    settings_path.push(OLD_SETTINGS_PATH);
+    println!("Fall through");
 
     if let Ok(f) = File::open(&settings_path) {
         settings_toml(f).unwrap_or_else(|_| println!("default"));
