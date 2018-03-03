@@ -6,6 +6,8 @@ use std::io::{BufReader, ErrorKind};
 use std::collections::BTreeMap;
 use std::fs::File;
 
+use toml::Value;
+
 static OVERRIDES_PATH : &'static str = ".multirust/overrides";
 static SETTINGS_PATH : &'static str = ".rustup/settings.toml";
 static OLD_SETTINGS_PATH : &'static str = ".multirust/settings.toml";
@@ -80,11 +82,11 @@ fn settings_toml(mut settings: File) -> Result<(), ()> {
     let mut content = String::new();
     settings.read_to_string(&mut content).expect("Can't read settings file");
 
-    let database = try!(toml::Parser::new(&content).parse()
-        .and_then(|toml| toml.get("overrides").cloned())
-        .and_then(|overrides| overrides.as_table().cloned())
-        .and_then(|database| Some(OverridesDatabase::Toml(database)))
-        .ok_or(()));
+    let database = content.parse::<Value>().map_err(|_| ())?;
+    let database = database.get("overrides").cloned()
+            .and_then(|overrides| overrides.as_table().cloned())
+            .and_then(|database| Some(OverridesDatabase::Toml(database)))
+            .ok_or(())?;
 
     toolchain(database);
     Ok(())
