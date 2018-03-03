@@ -139,7 +139,6 @@ fn main() {
 
     let mut settings_path = home.clone();
     settings_path.push(OLD_SETTINGS_PATH);
-    println!("Fall through");
 
     if let Ok(f) = File::open(&settings_path) {
         settings_toml(f).unwrap_or_else(|_| println!("default"));
