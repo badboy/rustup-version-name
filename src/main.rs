@@ -91,7 +91,10 @@ fn settings_toml(mut settings: File) -> Result<(), ()> {
 }
 
 fn toolchain(database: OverridesDatabase) {
-    let mut cwd = env::current_dir().expect("No valid working directory");
+    let mut cwd = match env::current_dir() {
+        Ok(cwd) => cwd,
+        Err(_) => return,
+    };
 
     loop {
         let path = format!("{}", cwd.display());
